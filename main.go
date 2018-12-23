@@ -9,6 +9,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const PathWeb = "./web/dist/"
+
 func main() {
 	/*
 	 * Import Environment
@@ -27,16 +29,17 @@ func main() {
 	route := gin.Default()
 
 	// Share static files
-	route.Static("/web", "./web")
-	route.LoadHTMLGlob("./web/index.html")
+	route.Static("/web", PathWeb)
+	route.LoadHTMLGlob(PathWeb + "index.html")
 
-	route.GET("/web", func(c *gin.Context) {
+	route.NoRoute(func(c *gin.Context) {
 		if pusher := c.Writer.Pusher(); pusher != nil {
 			// use pusher.Push() to do server push
 			if err := pusher.Push("/web/main.js", nil); err != nil {
 				log.Printf("Failed to push: %v", err)
 			}
 		}
+
 		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
 
