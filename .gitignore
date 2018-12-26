@@ -1,5 +1,11 @@
+# Own configurations
 .env
+
+# GoLand
 .idea/
+
+# Default path to Database (.env file)
+database.db
 
 # Submodules
 web/
