@@ -1,51 +1,37 @@
 package main
 
 import (
-	"log"
-	"net/http"
 	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/kataras/iris"
+
+	"github.com/kataras/iris/middleware/logger"
+	"github.com/kataras/iris/middleware/recover"
 )
 
 const PathWeb = "./web/dist/"
 
 func main() {
-	/*
-	 * Import Environment
-	 */
+	/* - Import Environment - */
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		panic("env not loaded")
 	}
 
-	// Set mode: release or debug
-	gin.SetMode(os.Getenv("GIN_MODE"))
+	/* - Initialization Iris - */
+	app := iris.New()
+	app.Logger().SetLevel(os.Getenv("LOGGER"))
 
-	/*
-	 * Route
-	 */
-	route := gin.Default()
+	// Optionally, add two built'n handlers
+	// that can recover from any http-relative panics
+	// and log the requests to the terminal.
+	app.Use(recover.New())
+	app.Use(logger.New())
 
-	// Share static files
-	route.Static("/web", PathWeb)
-	route.LoadHTMLGlob(PathWeb + "index.html")
+	app.StaticWeb("/", PathWeb)
 
-	route.NoRoute(func(c *gin.Context) {
-		if pusher := c.Writer.Pusher(); pusher != nil {
-			// use pusher.Push() to do server push
-			if err := pusher.Push("/web/main.js", nil); err != nil {
-				log.Printf("Failed to push: %v", err)
-			}
-		}
 
-		c.HTML(http.StatusOK, "index.html", gin.H{})
-	})
 
-	// Start Server
-	err = route.RunTLS(":8080", os.Getenv("CERT_FILE_PATH"), os.Getenv("CERT_KEY_PATH"))
-	if err != nil {
-		log.Fatal("Error RunTLS server")
-	}
+	app.Run(iris.Addr(":8080"), iris.WithoutServerError(iris.ErrServerClosed))
 }
