@@ -7,6 +7,7 @@ type User struct {
 	Name       string
 	Login      string `gorm:"unique_index; not null"`
 	Password   string `gorm:"not null"`
-	IsAdmin    bool   `gorm:"default:0; not null"`
-	IsDisabled bool   `gorm:"default:0; not null"`
+	Passcode   string `gorm:"size:4"`
+	IsAdmin    bool   `gorm:"default:false; not null"`
+	IsDisabled bool   `gorm:"default:false; not null"`
 }

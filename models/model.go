@@ -8,7 +8,9 @@ import (
 const HashCost = 14
 
 func Migrate(db *gorm.DB) {
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &UserSession{})
+
+	db.Model(&UserSession{}).AddForeignKey("user_id", "users(id)", "CASCADE", "RESTRICT")
 }
 
 // Password Hashing.

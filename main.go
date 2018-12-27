@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/joho/godotenv"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -15,7 +15,7 @@ import (
 
 const PathWeb = "./web/dist/"
 
-func main() {
+func Init() *gorm.DB {
 	/* - Import Environment - */
 	err := godotenv.Load()
 	if err != nil {
@@ -23,10 +23,24 @@ func main() {
 	}
 
 	/* - Connect to Database - */
-	db, err := gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
+	db, err := gorm.Open(
+		"postgres",
+		"host="+os.Getenv("DATABASE_HOST")+" "+
+			"port="+os.Getenv("DATABASE_PORT")+" "+
+			"user="+os.Getenv("DATABASE_USER")+" "+
+			"dbname="+os.Getenv("DATABASE_NAME")+" "+
+			"password="+os.Getenv("DATABASE_PASS")+" "+
+			"sslmode="+os.Getenv("DATABASE_SSL"))
+
 	if err != nil {
 		panic(err)
 	}
+
+	return db
+}
+
+func main() {
+	db := Init()
 	defer db.Close()
 
 	/* - Initialization Iris - */
