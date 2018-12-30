@@ -4,7 +4,7 @@ import "github.com/jinzhu/gorm"
 
 type Group struct {
 	gorm.Model
-	CreatorId   uint   `gorm:"index"`
+	CreatorId   uint   `gorm:"not null"`
 	Name        string `gorm:"not null"`
 	Description string
 
