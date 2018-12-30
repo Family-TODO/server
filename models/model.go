@@ -8,7 +8,7 @@ import (
 const HashCost = 14
 
 func Migrate(db *gorm.DB) {
-	db.AutoMigrate(&User{}, &Group{})
+	db.AutoMigrate(&User{}, &Group{}, &Task{})
 }
 
 // Password Hashing.

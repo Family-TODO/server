@@ -11,4 +11,5 @@ type User struct {
 	IsDisabled    bool    `gorm:"default:false; not null"`
 	Groups        []Group `gorm:"many2many:user_group;"`
 	CreatorGroups []Group `gorm:"foreignkey:CreatorId"`
+	Tasks         []Task
 }
