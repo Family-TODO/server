@@ -4,10 +4,11 @@ import "github.com/jinzhu/gorm"
 
 type User struct {
 	gorm.Model
-	Name       string
-	Login      string `gorm:"unique_index; not null"`
-	Password   string `gorm:"not null"`
-	Passcode   string `gorm:"size:4"`
-	IsAdmin    bool   `gorm:"default:false; not null"`
-	IsDisabled bool   `gorm:"default:false; not null"`
+	Name          string
+	Login         string  `gorm:"unique_index; not null"`
+	Password      string  `gorm:"not null"`
+	IsAdmin       bool    `gorm:"default:false; not null"`
+	IsDisabled    bool    `gorm:"default:false; not null"`
+	Groups        []Group `gorm:"many2many:user_group;"`
+	CreatorGroups []Group `gorm:"foreignkey:CreatorId"`
 }
