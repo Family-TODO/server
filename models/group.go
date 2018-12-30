@@ -7,6 +7,8 @@ type Group struct {
 	CreatorId   uint   `gorm:"index"`
 	Name        string `gorm:"not null"`
 	Description string
-	Users       []User `gorm:"many2many:user_group;"`
-	Tasks       []Task
+
+	Users []User `gorm:"many2many:user_group"`
+	Tasks []Task
+	Tag   Tag `gorm:"polymorphic:Owner"`
 }
