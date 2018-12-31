@@ -9,3 +9,6 @@ database.db
 
 # Submodules
 web/
+
+# Sessions
+data/
