@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strings"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -18,11 +17,6 @@ import (
 var (
 	db      *gorm.DB
 	session *sessions.Sessions
-
-	publicRouteName = []string{
-		"GET/*file",
-		"POST/api/auth",
-	}
 )
 
 func Init() (*gorm.DB, *badger.Database, *iris.Application) {
@@ -69,10 +63,6 @@ func Init() (*gorm.DB, *badger.Database, *iris.Application) {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	// Order of those calls doesn't matter, `UseGlobal` and `DoneGlobal`
-	// are applied to existing routes and future routes.
-	app.UseGlobal(beforeRoute)
-
 	return db, sessionDatabase, app
 }
 
@@ -82,18 +72,4 @@ func GetDB() *gorm.DB {
 
 func GetSession() *sessions.Sessions {
 	return session
-}
-
-func beforeRoute(ctx iris.Context) {
-	sess := session.Start(ctx)
-	isAuth, _ := sess.GetBoolean("isAuth")
-	routeName := ctx.GetCurrentRoute().Name()
-
-	if !isAuth && strings.Index(strings.Join(publicRouteName, ","), routeName) == -1 {
-		ctx.StatusCode(iris.StatusUnauthorized)
-		ctx.JSON(map[string]string{"error": "Auth is required"})
-		return
-	}
-
-	ctx.Next()
 }

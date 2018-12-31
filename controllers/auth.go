@@ -3,6 +3,7 @@ package controllers
 import (
 	"../config"
 	"../models"
+	"../utils"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -26,7 +27,7 @@ func handleLogin(ctx context.Context) {
 	var user models.User
 	db.Where("login = ?", login).First(&user)
 
-	if user.ID <= 0 || !models.CheckPasswordHash(password, user.Password) {
+	if user.ID <= 0 || !utils.CheckPasswordHash(password, user.Password) {
 		ctx.StatusCode(422)
 		ctx.JSON(iris.Map{"error": "Login or password is incorrect"})
 		return
