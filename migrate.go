@@ -1,12 +1,8 @@
 package main
 
 import (
+	"./config"
 	"./models"
-	"os"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/joho/godotenv"
 )
 
 const (
@@ -16,19 +12,9 @@ const (
 )
 
 func main() {
-	/* - Import Environment - */
-	err := godotenv.Load()
-	if err != nil {
-		panic(err)
-	}
-
-	/* - Connect to Database - */
-	db, err := gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
-
-	if err != nil {
-		panic(err)
-	}
+	db, session, _ := config.Init()
 	defer db.Close()
+	defer session.Close()
 
 	// Migrate the schema
 	models.Migrate(db)
