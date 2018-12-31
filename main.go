@@ -13,9 +13,39 @@ import (
 	"github.com/kataras/iris/middleware/recover"
 )
 
+var db *gorm.DB
+
 const PathWeb = "./web/dist/"
 
-func Init() *gorm.DB {
+func main() {
+	db, app := Init()
+	defer db.Close()
+
+	// SPA (git submodule, dist folder)
+	app.StaticWeb("/", PathWeb)
+
+	routeApi(app)
+
+	app.Run(iris.Addr(":8080"))
+}
+
+func routeApi(app *iris.Application) {
+	api := app.Party("/api")
+
+	api.Get("/users", func(ctx context.Context) {
+		ctx.Text("Success")
+	})
+
+	// FIXME Example
+	//api.Get("/api/users", func(ctx context.Context) {
+	//	var user models.User
+	//	db.First(&user, 1)
+	//
+	//	ctx.JSON(user)
+	//})
+}
+
+func Init() (*gorm.DB, *iris.Application) {
 	/* - Import Environment - */
 	err := godotenv.Load()
 	if err != nil {
@@ -23,18 +53,11 @@ func Init() *gorm.DB {
 	}
 
 	/* - Connect to Database - */
-	db, err := gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
+	db, err = gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
 
 	if err != nil {
 		panic(err)
 	}
-
-	return db
-}
-
-func main() {
-	db := Init()
-	defer db.Close()
 
 	/* - Initialization Iris - */
 	app := iris.New()
@@ -46,16 +69,23 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	// SPA (git submodule, dist folder)
-	app.StaticWeb("/", PathWeb)
+	// Order of those calls doesn't matter, `UseGlobal` and `DoneGlobal`
+	// are applied to existing routes and future routes.
+	app.UseGlobal(beforeRoute)
 
-	// FIXME Example
-	app.Get("/api/users", func(ctx context.Context) {
-		var user models.User
-		db.First(&user, 1)
+	return db, app
+}
 
-		ctx.JSON(user)
-	})
+func beforeRoute(ctx iris.Context) {
+	var user models.User
+	db.First(&user, 1)
+	println(user.ID)
 
-	app.Run(iris.Addr(":8080"), iris.WithoutServerError(iris.ErrServerClosed))
+	if user.ID < 1 {
+		return
+	}
+
+	ctx.Values().Set("user", user)
+	println("Before")
+	ctx.Next()
 }
