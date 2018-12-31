@@ -35,9 +35,14 @@ func main() {
 	// Auth
 	controllers.AuthRoute(api)
 
-	app.Run(iris.Addr(os.Getenv(":" + "PORT")))
+	if os.Getenv("APP_MODE") == "release" {
+		app.Run(iris.AutoTLS(":443", os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
+	} else {
+		app.Run(iris.Addr(os.Getenv(":" + "PORT")))
+	}
 }
 
+// Guard
 func beforeRoute(ctx iris.Context) {
 	sess := config.GetSession().Start(ctx)
 	isAuth, _ := sess.GetBoolean("isAuth")
