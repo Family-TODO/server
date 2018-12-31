@@ -3,6 +3,7 @@ package main
 import (
 	"./config"
 	"./controllers"
+	"os"
 
 	"github.com/kataras/iris"
 )
@@ -23,5 +24,5 @@ func main() {
 	// Auth
 	controllers.AuthRoute(api)
 
-	app.Run(iris.Addr(":8080"))
+	app.Run(iris.Addr(os.Getenv(":" + "PORT")))
 }
