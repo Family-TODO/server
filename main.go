@@ -5,17 +5,21 @@ import (
 	"./controllers"
 
 	"os"
-	"strings"
 
 	"github.com/kataras/iris"
 )
 
 const PathWeb = "./web/dist/"
 
-var publicRouteName = []string{
-	"GET/*file",
-	"POST/api/auth",
-}
+var (
+	allowNotAuthRoutesName = [2]string{
+		"GET/*file",
+		"POST/api/auth",
+	}
+	blockAuthRoutesName = [2]string{
+		"POST/api/auth",
+	}
+)
 
 func main() {
 	db, session, app := config.Init()
@@ -44,15 +48,30 @@ func main() {
 
 // Guard
 func beforeRoute(ctx iris.Context) {
-	sess := config.GetSession().Start(ctx)
-	isAuth, _ := sess.GetBoolean("isAuth")
-	routeName := ctx.GetCurrentRoute().Name()
+	isAuth, _ := config.GetSession().Start(ctx).GetBoolean("isAuth")
+	currentRouteName := ctx.GetCurrentRoute().Name()
 
-	if !isAuth && strings.Index(strings.Join(publicRouteName, ","), routeName) == -1 {
+	if isAuth && existRouteName(currentRouteName, blockAuthRoutesName) {
 		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.JSON(map[string]string{"error": "Access denied for authorized users"})
+		return
+	}
+
+	if !isAuth && !existRouteName(currentRouteName, allowNotAuthRoutesName) {
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
 		ctx.JSON(map[string]string{"error": "Auth is required"})
 		return
 	}
 
 	ctx.Next()
+}
+
+func existRouteName(currentRouteName string, routesName [2]string) bool {
+	for _, routeName := range routesName {
+		if currentRouteName == routeName {
+			return true
+		}
+	}
+
+	return false
 }
