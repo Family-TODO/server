@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	db, session, _ := config.Init()
+	db, badgerDB, _ := config.Init()
 	defer db.Close()
-	defer session.Close()
+	defer badgerDB.Close()
 
 	// Migrate the schema
 	models.Migrate(db)

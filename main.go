@@ -3,6 +3,7 @@ package main
 import (
 	"./config"
 	"./controllers"
+	"./models"
 
 	"os"
 
@@ -22,9 +23,9 @@ var (
 )
 
 func main() {
-	db, session, app := config.Init()
+	db, badgerDb, app := config.Init()
 	defer db.Close()
-	defer session.Close()
+	defer badgerDb.Close()
 
 	// SPA (git submodule, dist folder)
 	app.StaticWeb("/", PathWeb)
@@ -48,7 +49,10 @@ func main() {
 
 // Guard
 func beforeRoute(ctx iris.Context) {
-	isAuth, _ := config.GetSession().Start(ctx).GetBoolean("isAuth")
+	// Check header token
+	authTokenHeader := ctx.GetHeader("Auth")
+	isAuth := models.ValidateUserToken(authTokenHeader)
+
 	currentRouteName := ctx.GetCurrentRoute().Name()
 
 	if isAuth && existRouteName(currentRouteName, blockAuthRoutesName) {

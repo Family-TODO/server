@@ -2,24 +2,22 @@ package config
 
 import (
 	"os"
-	"time"
 
+	"github.com/dgraph-io/badger"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/joho/godotenv"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/logger"
 	"github.com/kataras/iris/middleware/recover"
-	"github.com/kataras/iris/sessions"
-	"github.com/kataras/iris/sessions/sessiondb/badger"
 )
 
 var (
-	db      *gorm.DB
-	session *sessions.Sessions
+	db       *gorm.DB
+	badgerDb *badger.DB
 )
 
-func Init() (*gorm.DB, *badger.Database, *iris.Application) {
+func Init() (*gorm.DB, *badger.DB, *iris.Application) {
 	/* - Import Environment - */
 	err := godotenv.Load()
 	if err != nil {
@@ -33,8 +31,11 @@ func Init() (*gorm.DB, *badger.Database, *iris.Application) {
 		panic(err)
 	}
 
-	/* - Sessions - */
-	sessionDatabase, err := badger.New(os.Getenv("SESSION_PATH"))
+	/* - Key-value Database - */
+	opts := badger.DefaultOptions
+	opts.Dir = os.Getenv("BADGER_PATH")
+	opts.ValueDir = os.Getenv("BADGER_PATH")
+	badgerDb, err = badger.Open(opts)
 	if err != nil {
 		panic(err)
 	}
@@ -42,16 +43,7 @@ func Init() (*gorm.DB, *badger.Database, *iris.Application) {
 	// Close and unlock the database when control+C/cmd+C pressed
 	iris.RegisterOnInterrupt(func() {
 		db.Close()
-		sessionDatabase.Close()
 	})
-
-	session = sessions.New(sessions.Config{
-		Cookie:       "_session",
-		Expires:      30 * 24 * time.Hour, // <= 0 means unlimited life
-		AllowReclaim: true,
-	})
-
-	session.UseDatabase(sessionDatabase)
 
 	/* - Initialization Iris - */
 	app := iris.New()
@@ -63,13 +55,13 @@ func Init() (*gorm.DB, *badger.Database, *iris.Application) {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	return db, sessionDatabase, app
+	return db, badgerDb, app
 }
 
-func GetDB() *gorm.DB {
+func GetDb() *gorm.DB {
 	return db
 }
 
-func GetSession() *sessions.Sessions {
-	return session
+func GetBadgerDb() *badger.DB {
+	return badgerDb
 }

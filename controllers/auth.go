@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"../config"
 	"../models"
 	"../utils"
 
@@ -15,7 +14,6 @@ func AuthRoute(router router.Party) {
 }
 
 func handleLogin(ctx context.Context) {
-	db := config.GetDB()
 	login, password := ctx.PostValue("login"), ctx.PostValue("password")
 
 	if login == "" || password == "" {
@@ -24,8 +22,7 @@ func handleLogin(ctx context.Context) {
 		return
 	}
 
-	var user models.User
-	db.Where("login = ?", login).First(&user)
+	user := models.GetUserByLogin(login)
 
 	if user.ID <= 0 || !utils.CheckPasswordHash(password, user.Password) {
 		ctx.StatusCode(422)
@@ -33,9 +30,7 @@ func handleLogin(ctx context.Context) {
 		return
 	}
 
-	session := config.GetSession()
-	sess := session.Start(ctx)
-	sess.Set("isAuth", true)
-	sess.Set("ID", user.ID)
-	ctx.JSON(iris.Map{"result": "Success"})
+	token := user.AddUserToken()
+
+	ctx.JSON(iris.Map{"result": "Success", "token": token})
 }

@@ -7,8 +7,8 @@
 # Default path to Database (.env file)
 database.db
 
+# Badger Database (.env file)
+data/
+
 # Submodules
 web/
-
-# Sessions
-data/
