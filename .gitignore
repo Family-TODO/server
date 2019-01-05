@@ -1,5 +1,14 @@
+# Own configurations
 .env
+
+# GoLand
 .idea/
+
+# Default path to Database (.env file)
+database.db
+
+# Badger Database (.env file)
+data/
 
 # Submodules
 web/
