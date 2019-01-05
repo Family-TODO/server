@@ -10,6 +10,7 @@ import (
 )
 
 func AuthRoute(router router.Party) {
+	router.Get("/auth/tokens", handleTokens)
 	router.Post("/auth", handleLogin)
 }
 
@@ -30,7 +31,21 @@ func handleLogin(ctx context.Context) {
 		return
 	}
 
-	token := user.AddUserToken()
+	token, err := user.AddToken(ctx.RemoteAddr())
 
-	ctx.JSON(iris.Map{"result": "Success", "token": token})
+	if err == nil {
+		ctx.JSON(iris.Map{"result": "Success", "token": token})
+	} else {
+		ctx.JSON(iris.Map{"error": "Error"})
+	}
+}
+
+func handleTokens(ctx context.Context) {
+	tokens, err := models.GetCurrentUser().GetTokens()
+
+	if err == nil {
+		ctx.JSON(iris.Map{"result": "Success", "tokens": tokens})
+	} else {
+		ctx.JSON(iris.Map{"error": "Error"})
+	}
 }

@@ -27,20 +27,58 @@ type User struct {
 	Tag           Tag `gorm:"polymorphic:Owner"`
 }
 
+type UserTokens struct {
+	Token string `json:"token"`
+	Ip    string `json:"ip"`
+}
+
 var currentUser User
 
 // Return token
-func (user User) AddUserToken() string {
+func (user User) AddToken(ip string) (string, error) {
 	rnd := utils.RandStringBytesMaskImpr(60)
 	token := strconv.FormatUint(uint64(user.ID), 10) + ":" + rnd
 
 	badgerDb := config.GetBadgerDb()
-
-	badgerDb.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("user.token." + token), nil)
+	err := badgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte("user.token."+token), []byte(ip))
 	})
 
-	return token
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (user User) GetTokens() ([]UserTokens, error) {
+	var tokens [] UserTokens
+
+	badgerDb := config.GetBadgerDb()
+	err := badgerDb.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		prefix := []byte("user.token." + strconv.FormatUint(uint64(user.ID), 10) + ":")
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, err := item.ValueCopy(nil)
+			if err == nil {
+				tokens = append(tokens, UserTokens{Token: string(k[:]), Ip: string(v[:])})
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
 }
 
 // True - is validated
@@ -69,6 +107,7 @@ func ValidateUserToken(token string) bool {
 	return err == nil
 }
 
+// ip - Remote Address
 func GetUserById(id int) User {
 	var user User
 
@@ -99,8 +138,8 @@ func GetUserById(id int) User {
 	if user.ID > 0 {
 		byteUser, err := json.Marshal(user)
 		if err == nil {
-			badgerDb.Update(func(txn *badger.Txn) error {
-				return txn.SetWithTTL([]byte("user." + strconv.Itoa(id)), byteUser,  time.Hour * 24 * 7)
+			_ = badgerDb.Update(func(txn *badger.Txn) error {
+				return txn.SetWithTTL([]byte("user."+strconv.Itoa(id)), byteUser, time.Hour*24*7)
 			})
 		}
 	}
