@@ -10,21 +10,20 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/jinzhu/gorm"
 )
 
 type User struct {
-	gorm.Model
-	Name       string
-	Login      string `gorm:"unique_index; not null"`
-	Password   string `gorm:"not null"`
-	IsAdmin    bool   `gorm:"default:false; not null"`
-	IsDisabled bool   `gorm:"default:false; not null"`
+	Model
+	Name       string `json:"name"`
+	Login      string `gorm:"unique_index; not null" json:"login"`
+	Password   string `gorm:"not null" json:"password"`
+	IsAdmin    bool   `gorm:"default:false; not null" json:"is_admin"`
+	IsDisabled bool   `gorm:"default:false; not null" json:"is_disabled"`
 
-	Groups        []Group `gorm:"many2many:user_group"`
-	CreatorGroups []Group `gorm:"foreignkey:CreatorId"`
-	Tasks         []Task
-	Tag           Tag `gorm:"polymorphic:Owner"`
+	Groups        []Group `gorm:"many2many:user_group" json:"groups"`
+	CreatorGroups []Group `gorm:"foreignkey:CreatorId" json:"creator_groups"`
+	Tasks         []Task  `json:"tasks"`
+	Tag           Tag     `gorm:"polymorphic:Owner" json:"tag"`
 }
 
 type UserTokens struct {
@@ -129,18 +128,18 @@ func GetUserById(id int) User {
 		return json.Unmarshal(val, &user)
 	})
 
-	// Get user from DB
+	// Get user from DB and save to badgerDB
 	if err != nil {
 		db.First(&user, id)
-	}
 
-	// Add/Update with TTL
-	if user.ID > 0 {
-		byteUser, err := json.Marshal(user)
-		if err == nil {
-			_ = badgerDb.Update(func(txn *badger.Txn) error {
-				return txn.SetWithTTL([]byte("user."+strconv.Itoa(id)), byteUser, time.Hour*24*7)
-			})
+		// Add/Update with TTL
+		if user.ID > 0 {
+			byteUser, err := json.Marshal(user)
+			if err == nil {
+				_ = badgerDb.Update(func(txn *badger.Txn) error {
+					return txn.SetWithTTL([]byte("user."+strconv.Itoa(id)), byteUser, time.Hour*24*7)
+				})
+			}
 		}
 	}
 
