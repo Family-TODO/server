@@ -8,5 +8,4 @@ type Group struct {
 
 	Users []User `gorm:"many2many:user_group" json:"users"`
 	Tasks []Task `json:"tasks"`
-	Tag   Tag    `gorm:"polymorphic:Owner" json:"tag"`
 }

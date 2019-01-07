@@ -1,7 +1,10 @@
-# server
+# Server
+
+## TODO
+- [ ] Add filter return object fields
+- [ ] Protect from brute force
 
 ## Docs
-
 - Iris Framework - [Website](https://docs.iris-go.com), [Github](https://github.com/kataras/iris)
 - Gorm ORM - [Website](http://doc.gorm.io), [Github](https://github.com/jinzhu/gorm)
 

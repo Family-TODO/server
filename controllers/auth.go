@@ -15,9 +15,8 @@ func AuthRoute(router router.Party) {
 	router.Get("/auth/me", handleMe)
 }
 
-// FIXME Temporary?
 func handleMe(ctx context.Context) {
-	ctx.JSON(models.GetCurrentUser())
+	ctx.JSON(iris.Map{"result": "Success", "user": models.GetCurrentUser()})
 }
 
 func handleLogin(ctx context.Context) {

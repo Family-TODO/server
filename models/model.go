@@ -22,7 +22,7 @@ const (
 )
 
 func Migrate(db *gorm.DB) {
-	db.AutoMigrate(&User{}, &Group{}, &Task{}, &Tag{})
+	db.AutoMigrate(&User{}, &Group{}, &Task{})
 
 	// Create User Admin
 	hash, err := utils.HashPassword(adminPassword)

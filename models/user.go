@@ -23,7 +23,6 @@ type User struct {
 	Groups        []Group `gorm:"many2many:user_group" json:"groups"`
 	CreatorGroups []Group `gorm:"foreignkey:CreatorId" json:"creator_groups"`
 	Tasks         []Task  `json:"tasks"`
-	Tag           Tag     `gorm:"polymorphic:Owner" json:"tag"`
 }
 
 type UserTokens struct {
