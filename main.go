@@ -43,7 +43,7 @@ func main() {
 	if os.Getenv("APP_MODE") == "release" {
 		app.Run(iris.AutoTLS(":443", os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
 	} else {
-		app.Run(iris.Addr(os.Getenv(":" + "PORT")))
+		app.Run(iris.Addr(":" + os.Getenv("PORT")))
 	}
 }
 

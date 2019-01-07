@@ -10,8 +10,14 @@ import (
 )
 
 func AuthRoute(router router.Party) {
-	router.Get("/auth/tokens", handleTokens)
 	router.Post("/auth", handleLogin)
+	router.Get("/auth/tokens", handleTokens)
+	router.Get("/auth/me", handleMe)
+}
+
+// FIXME Temporary?
+func handleMe(ctx context.Context) {
+	ctx.JSON(models.GetCurrentUser())
 }
 
 func handleLogin(ctx context.Context) {
