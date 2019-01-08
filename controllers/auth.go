@@ -10,9 +10,12 @@ import (
 )
 
 func AuthRoute(router router.Party) {
-	router.Post("/auth", handleLogin)
-	router.Get("/auth/tokens", handleTokens)
-	router.Get("/auth/me", handleMe)
+	// Route -> /api/groups/*
+	authRoute := router.Party("/auth")
+
+	authRoute.Post("/", handleLogin)
+	authRoute.Get("/tokens", handleTokens)
+	authRoute.Get("/me", handleMe)
 }
 
 func handleMe(ctx context.Context) {

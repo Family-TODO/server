@@ -37,8 +37,9 @@ func main() {
 	// Route -> /api/*
 	api := app.Party("/api")
 
-	// Auth
+	// Routes
 	controllers.AuthRoute(api)
+	controllers.GroupsRoute(api)
 
 	if os.Getenv("APP_MODE") == "release" {
 		app.Run(iris.AutoTLS(":443", os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
