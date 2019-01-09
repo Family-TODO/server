@@ -6,6 +6,7 @@ type Group struct {
 	Name        string `gorm:"not null" json:"name"`
 	Description string `json:"description"`
 
-	Users []User `gorm:"many2many:user_group" json:"users"`
-	Tasks []Task `json:"tasks"`
+	UserCreator User   `gorm:"foreignkey:CreatorId"`
+	Users       []User `gorm:"many2many:group_user" json:"users"`
+	Tasks       []Task `json:"tasks"`
 }

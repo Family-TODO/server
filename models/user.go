@@ -18,10 +18,9 @@ type User struct {
 	Login      string `gorm:"unique_index; not null" json:"login"`
 	Password   string `gorm:"not null" json:"password"`
 	IsAdmin    bool   `gorm:"default:false; not null" json:"is_admin"`
-	IsDisabled bool   `gorm:"default:false; not null" json:"is_disabled"`
 
-	Groups        []Group `gorm:"many2many:user_group" json:"groups"`
 	CreatorGroups []Group `gorm:"foreignkey:CreatorId" json:"creator_groups"`
+	Groups        []Group `gorm:"many2many:group_user" json:"groups"`
 	Tasks         []Task  `json:"tasks"`
 }
 

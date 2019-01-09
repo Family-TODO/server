@@ -26,6 +26,9 @@ func Init() (*gorm.DB, *badger.DB, *iris.Application) {
 
 	/* - Connect to Database - */
 	db, err = gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
+	if os.Getenv("APP_MODE") == "debug" {
+		db.LogMode(true)
+	}
 
 	if err != nil {
 		panic(err)
