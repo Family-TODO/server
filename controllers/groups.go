@@ -13,7 +13,29 @@ func GroupsRoute(router router.Party) {
 	// Route -> /api/groups/*
 	groupsRoute := router.Party("/groups")
 
+	groupsRoute.Get("/", handleGet)
 	groupsRoute.Post("/", handlePost)
+}
+
+func handleGet(ctx context.Context) {
+	db := config.GetDb()
+
+	offset, err := ctx.URLParamInt("offset")
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	count, err := ctx.URLParamInt("count")
+	if err != nil || count > 100 || count < 0 {
+		count = 30
+	}
+
+	var groups []models.Group
+
+	//TODO Last Task
+	db.Preload("UserCreator").Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").Where("groups.creator_id = ? OR gu.user_id = ?", models.GetCurrentUser().ID, models.GetCurrentUser().ID).Order("groups.updated_at desc").Limit(count).Offset(offset).Find(&groups)
+
+	ctx.JSON(iris.Map{"result": "Success", "groups": groups})
 }
 
 func handlePost(ctx context.Context) {
