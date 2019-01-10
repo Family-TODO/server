@@ -4,6 +4,7 @@ import (
 	"../config"
 	"../models"
 
+	"github.com/jinzhu/gorm"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/core/router"
@@ -31,9 +32,28 @@ func handleGet(ctx context.Context) {
 	}
 
 	var groups []models.Group
+	userId := models.GetCurrentUser().ID
 
-	//TODO Last Task
-	db.Preload("UserCreator").Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").Where("groups.creator_id = ? OR gu.user_id = ?", models.GetCurrentUser().ID, models.GetCurrentUser().ID).Order("groups.updated_at desc").Limit(count).Offset(offset).Find(&groups)
+	db.
+		Select("DISTINCT groups.*").
+		Preload("Tasks", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Select("DISTINCT tasks.*").
+				Group("group_id").
+				Order("updated_at desc").
+				Preload("User", func(db *gorm.DB) *gorm.DB {
+					return db.Select("id, name, login, updated_at, created_at")
+				})
+		}).
+		Preload("Creator", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name, login, updated_at, created_at")
+		}).
+		Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").
+		Where("groups.creator_id = ? OR gu.user_id = ?", userId, userId).
+		Order("groups.updated_at desc").
+		Limit(count).
+		Offset(offset).
+		Find(&groups)
 
 	ctx.JSON(iris.Map{"result": "Success", "groups": groups})
 }
@@ -47,7 +67,7 @@ func handlePost(ctx context.Context) {
 		return
 	}
 
-	group := models.Group{Name: name, Description: description, CreatorId: models.GetCurrentUser().ID}
+	group := models.Group{Name: name, Description: description, CreatorID: models.GetCurrentUser().ID}
 
 	db := config.GetDb()
 	isBlank := db.NewRecord(group)
