@@ -35,18 +35,15 @@ func handleGet(ctx context.Context) {
 	userId := models.GetCurrentUser().ID
 
 	db.
+		Table("groups").
 		Select("DISTINCT groups.*").
+		Preload("Creator").
 		Preload("Tasks", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Select("DISTINCT tasks.*").
-				Group("group_id").
-				Order("updated_at desc").
-				Preload("User", func(db *gorm.DB) *gorm.DB {
-					return db.Select("id, name, login, updated_at, created_at")
-				})
-		}).
-		Preload("Creator", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, login, updated_at, created_at")
+				Group("tasks.group_id").
+				Order("tasks.updated_at desc").
+				Preload("User")
 		}).
 		Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").
 		Where("groups.creator_id = ? OR gu.user_id = ?", userId, userId).
