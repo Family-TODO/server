@@ -35,9 +35,9 @@ func handleGet(ctx context.Context) {
 	userId := models.GetCurrentUser().ID
 
 	db.
-		Table("groups").
 		Select("DISTINCT groups.*").
 		Preload("Creator").
+		Preload("Users").
 		Preload("Tasks", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Select("DISTINCT tasks.*").
