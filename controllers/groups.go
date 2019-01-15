@@ -64,13 +64,19 @@ func handlePost(ctx context.Context) {
 		return
 	}
 
-	group := models.Group{Name: name, Description: description, CreatorID: models.GetCurrentUser().ID}
+	group := models.Group{
+		Name: name,
+		Description: description,
+		CreatorID: models.GetCurrentUser().ID,
+	}
 
 	db := config.GetDb()
 	isBlank := db.NewRecord(group)
 
 	if isBlank {
 		db.Create(&group)
+		db.Model(&group).Association("Users").Append(models.GetCurrentUser())
+		group.Creator = models.GetCurrentUser()
 		ctx.JSON(iris.Map{"result": isBlank, "group": group})
 	} else {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)

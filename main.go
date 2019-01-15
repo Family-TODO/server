@@ -57,13 +57,13 @@ func beforeRoute(ctx iris.Context) {
 	currentRouteName := ctx.GetCurrentRoute().Name()
 
 	if isAuth && existRouteName(currentRouteName, blockAuthRoutesName) {
-		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
 		ctx.JSON(map[string]string{"error": "Access denied for authorized users"})
 		return
 	}
 
 	if !isAuth && !existRouteName(currentRouteName, allowNotAuthRoutesName) {
-		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.JSON(map[string]string{"error": "Auth is required"})
 		return
 	}
