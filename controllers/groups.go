@@ -16,6 +16,7 @@ func GroupsRoute(router router.Party) {
 
 	groupsRoute.Get("/", handleGet)
 	groupsRoute.Post("/", handlePost)
+	groupsRoute.Delete("/{id:int}", handleDelete)
 }
 
 func handleGet(ctx context.Context) {
@@ -82,4 +83,29 @@ func handlePost(ctx context.Context) {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)
 		ctx.JSON(iris.Map{"error": "Error"})
 	}
+}
+
+func handleDelete(ctx context.Context) {
+	groupId := ctx.Params().Get("id")
+
+	var group models.Group
+	db := config.GetDb()
+	db.First(&group, groupId)
+
+	if group.ID < 1 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Group does not exist"})
+		return
+	}
+
+	currentUser := models.GetCurrentUser()
+
+	if group.CreatorID != currentUser.ID && !currentUser.IsAdmin {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "No permission to delete"})
+		return
+	}
+
+	db.Delete(&group)
+	ctx.JSON(iris.Map{"result": "Success"})
 }
