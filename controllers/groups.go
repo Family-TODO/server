@@ -4,7 +4,6 @@ import (
 	"../config"
 	"../models"
 
-	"github.com/jinzhu/gorm"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/core/router"
@@ -20,8 +19,6 @@ func GroupsRoute(router router.Party) {
 }
 
 func handleGet(ctx context.Context) {
-	db := config.GetDb()
-
 	offset, err := ctx.URLParamInt("offset")
 	if err != nil || offset < 0 {
 		offset = 0
@@ -35,23 +32,7 @@ func handleGet(ctx context.Context) {
 	var groups []models.Group
 	userId := models.GetCurrentUser().ID
 
-	db.
-		Select("DISTINCT groups.*").
-		Preload("Creator").
-		Preload("Users").
-		Preload("Tasks", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Select("DISTINCT tasks.*").
-				Group("tasks.group_id").
-				Order("tasks.updated_at desc").
-				Preload("User")
-		}).
-		Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").
-		Where("groups.creator_id = ? OR gu.user_id = ?", userId, userId).
-		Order("groups.updated_at desc").
-		Limit(count).
-		Offset(offset).
-		Find(&groups)
+	models.GetAllGroups(&groups, userId, count, offset)
 
 	ctx.JSON(iris.Map{"result": "Success", "groups": groups})
 }
