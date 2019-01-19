@@ -13,12 +13,12 @@ func GroupsRoute(router router.Party) {
 	// Route -> /api/groups/*
 	groupsRoute := router.Party("/groups")
 
-	groupsRoute.Get("/", handleGet)
-	groupsRoute.Post("/", handlePost)
-	groupsRoute.Delete("/{id:int}", handleDelete)
+	groupsRoute.Get("/", handleGroupsGet)
+	groupsRoute.Post("/", handleGroupPost)
+	groupsRoute.Delete("/{id:int}", handleGroupDelete)
 }
 
-func handleGet(ctx context.Context) {
+func handleGroupsGet(ctx context.Context) {
 	offset, err := ctx.URLParamInt("offset")
 	if err != nil || offset < 0 {
 		offset = 0
@@ -37,7 +37,7 @@ func handleGet(ctx context.Context) {
 	ctx.JSON(iris.Map{"result": "Groups received", "groups": groups})
 }
 
-func handlePost(ctx context.Context) {
+func handleGroupPost(ctx context.Context) {
 	name, description := ctx.PostValue("name"), ctx.PostValue("description")
 
 	if name == "" {
@@ -59,15 +59,14 @@ func handlePost(ctx context.Context) {
 		db.Create(&group)
 		db.Model(&group).Association("Users").Append(models.GetCurrentUser())
 		group.Creator = models.GetCurrentUser()
-		// FIXME isBlank
-		ctx.JSON(iris.Map{"result": isBlank, "group": group})
+		ctx.JSON(iris.Map{"result": "Group created", "group": group})
 	} else {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Create error"})
 	}
 }
 
-func handleDelete(ctx context.Context) {
+func handleGroupDelete(ctx context.Context) {
 	groupId := ctx.Params().Get("id")
 
 	var group models.Group

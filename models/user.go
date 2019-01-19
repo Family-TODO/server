@@ -117,6 +117,15 @@ func (user User) GetId() string {
 	return strconv.FormatUint(uint64(user.ID), 10)
 }
 
+func GetUsers() []User {
+	db := config.GetDb()
+
+	var users []User
+	db.Find(&users)
+
+	return users
+}
+
 // True - is validated
 // Set/Clear currentUser from parsed token
 func ValidateUserToken(token string) bool {
