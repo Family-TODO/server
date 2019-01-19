@@ -46,6 +46,18 @@ func handleGroupPost(ctx context.Context) {
 		return
 	}
 
+	if len(name) > 60 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "[Name] - Max length is 60"})
+		return
+	}
+
+	if len(description) > 300 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "[Description] - Max length is 60"})
+		return
+	}
+
 	group := models.Group{
 		Name: name,
 		Description: description,

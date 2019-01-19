@@ -21,7 +21,7 @@ func AuthRoute(router router.Party) {
 }
 
 func handleMe(ctx context.Context) {
-	ctx.JSON(iris.Map{"result": "User received", "user": models.GetCurrentUser()})
+	ctx.JSON(iris.Map{"result": "Current user received", "user": models.GetCurrentUser()})
 }
 
 func handleLogin(ctx context.Context) {

@@ -12,11 +12,6 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-const (
-	keyUser      = "user."
-	keyUserToken = "user.token."
-)
-
 type User struct {
 	Model
 	Name     string `json:"name"`
@@ -33,6 +28,11 @@ type UserTokens struct {
 	Token string `json:"token"`
 	Ip    string `json:"ip"`
 }
+
+const (
+	keyUser      = "user."
+	keyUserToken = "user.token."
+)
 
 var currentUser User
 
