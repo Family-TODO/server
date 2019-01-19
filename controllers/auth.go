@@ -21,7 +21,7 @@ func AuthRoute(router router.Party) {
 }
 
 func handleMe(ctx context.Context) {
-	ctx.JSON(iris.Map{"result": "Success", "user": models.GetCurrentUser()})
+	ctx.JSON(iris.Map{"result": "User received", "user": models.GetCurrentUser()})
 }
 
 func handleLogin(ctx context.Context) {
@@ -46,9 +46,9 @@ func handleLogin(ctx context.Context) {
 	token, err := user.AddToken(ctx.RemoteAddr())
 
 	if err == nil {
-		ctx.JSON(iris.Map{"result": "Success", "token": token})
+		ctx.JSON(iris.Map{"result": "You are logged in", "token": token})
 	} else {
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Authorisation Error"})
 	}
 }
 
@@ -59,11 +59,11 @@ func handleLogout(ctx context.Context) {
 
 	if err != nil {
 		ctx.StatusCode(422)
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Delete error"})
 		return
 	}
 
-	ctx.JSON(iris.Map{"result": "Success"})
+	ctx.JSON(iris.Map{"result": "You are logged out"})
 }
 
 func handleLogoutAll(ctx context.Context) {
@@ -72,19 +72,19 @@ func handleLogoutAll(ctx context.Context) {
 
 	if err != nil {
 		ctx.StatusCode(422)
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Delete error"})
 		return
 	}
 
-	ctx.JSON(iris.Map{"result": "Success"})
+	ctx.JSON(iris.Map{"result": "Tokens removed"})
 }
 
 func handleTokens(ctx context.Context) {
 	tokens, err := models.GetCurrentUser().GetTokens()
 
 	if err == nil {
-		ctx.JSON(iris.Map{"result": "Success", "tokens": tokens})
+		ctx.JSON(iris.Map{"result": "Tokens received", "tokens": tokens})
 	} else {
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Receive error"})
 	}
 }

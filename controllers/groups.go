@@ -34,7 +34,7 @@ func handleGet(ctx context.Context) {
 
 	models.GetAllGroups(&groups, userId, count, offset)
 
-	ctx.JSON(iris.Map{"result": "Success", "groups": groups})
+	ctx.JSON(iris.Map{"result": "Groups received", "groups": groups})
 }
 
 func handlePost(ctx context.Context) {
@@ -59,6 +59,7 @@ func handlePost(ctx context.Context) {
 		db.Create(&group)
 		db.Model(&group).Association("Users").Append(models.GetCurrentUser())
 		group.Creator = models.GetCurrentUser()
+		// FIXME isBlank
 		ctx.JSON(iris.Map{"result": isBlank, "group": group})
 	} else {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)
@@ -88,5 +89,5 @@ func handleDelete(ctx context.Context) {
 	}
 
 	db.Delete(&group)
-	ctx.JSON(iris.Map{"result": "Success"})
+	ctx.JSON(iris.Map{"result": "Group deleted"})
 }
