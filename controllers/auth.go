@@ -15,6 +15,7 @@ func AuthRoute(router router.Party) {
 
 	authRoute.Post("/", handleLogin)
 	authRoute.Post("/logout", handleLogout)
+	authRoute.Post("/logout/all", handleLogoutAll)
 	authRoute.Get("/tokens", handleTokens)
 	authRoute.Get("/me", handleMe)
 }
@@ -58,7 +59,20 @@ func handleLogout(ctx context.Context) {
 
 	if err != nil {
 		ctx.StatusCode(422)
-		ctx.JSON(iris.Map{"error": "Has error"})
+		ctx.JSON(iris.Map{"error": "Error"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "Success"})
+}
+
+func handleLogoutAll(ctx context.Context) {
+	user := models.GetCurrentUser()
+	err := user.RemoveTokens()
+
+	if err != nil {
+		ctx.StatusCode(422)
+		ctx.JSON(iris.Map{"error": "Error"})
 		return
 	}
 

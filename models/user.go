@@ -39,7 +39,7 @@ var currentUser User
 // Return token
 func (user User) AddToken(ip string) (string, error) {
 	rnd := utils.RandStringBytesMaskImpr(60)
-	token := strconv.FormatUint(uint64(user.ID), 10) + ":" + rnd
+	token := user.GetId() + ":" + rnd
 
 	badgerDb := config.GetBadgerDb()
 	err := badgerDb.Update(func(txn *badger.Txn) error {
@@ -60,6 +60,29 @@ func (user User) RemoveToken(token string) error {
 	})
 }
 
+func (user User) RemoveTokens() error {
+	badgerDb := config.GetBadgerDb()
+	return badgerDb.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		prefix := []byte(keyUserToken + user.GetId() + ":")
+		println("--->", prefix)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			key := it.Item().KeyCopy(nil)
+			err := txn.Delete(key)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
 func (user User) GetTokens() ([]UserTokens, error) {
 	var tokens [] UserTokens
 
@@ -70,7 +93,7 @@ func (user User) GetTokens() ([]UserTokens, error) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		prefix := []byte(keyUserToken + strconv.FormatUint(uint64(user.ID), 10) + ":")
+		prefix := []byte(keyUserToken + user.GetId() + ":")
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -88,6 +111,10 @@ func (user User) GetTokens() ([]UserTokens, error) {
 	}
 
 	return tokens, nil
+}
+
+func (user User) GetId() string {
+	return strconv.FormatUint(uint64(user.ID), 10)
 }
 
 // True - is validated
