@@ -12,6 +12,11 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
+const (
+	keyUser      = "user."
+	keyUserToken = "user.token."
+)
+
 type User struct {
 	Model
 	Name     string `json:"name"`
@@ -38,7 +43,7 @@ func (user User) AddToken(ip string) (string, error) {
 
 	badgerDb := config.GetBadgerDb()
 	err := badgerDb.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("user.token."+token), []byte(ip))
+		return txn.Set([]byte(keyUserToken+token), []byte(ip))
 	})
 
 	if err != nil {
@@ -46,6 +51,13 @@ func (user User) AddToken(ip string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (user User) RemoveToken(token string) error {
+	badgerDb := config.GetBadgerDb()
+	return badgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUserToken + token))
+	})
 }
 
 func (user User) GetTokens() ([]UserTokens, error) {
@@ -58,7 +70,7 @@ func (user User) GetTokens() ([]UserTokens, error) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		prefix := []byte("user.token." + strconv.FormatUint(uint64(user.ID), 10) + ":")
+		prefix := []byte(keyUserToken + strconv.FormatUint(uint64(user.ID), 10) + ":")
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -88,8 +100,10 @@ func ValidateUserToken(token string) bool {
 		return false
 	}
 
+	// TODO Protect Brute-force
+
 	err := badgerDb.View(func(txn *badger.Txn) error {
-		_, keyIsExists := txn.Get([]byte("user.token." + token))
+		_, keyIsExists := txn.Get([]byte(keyUserToken + token))
 		return keyIsExists
 	})
 
@@ -113,7 +127,7 @@ func GetUserById(id int) User {
 
 	// Get user from badgerDB
 	err := badgerDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("user." + strconv.Itoa(id)))
+		item, err := txn.Get([]byte(keyUser + strconv.Itoa(id)))
 		if err != nil {
 			return err
 		}
@@ -135,7 +149,7 @@ func GetUserById(id int) User {
 			byteUser, err := json.Marshal(user)
 			if err == nil {
 				_ = badgerDb.Update(func(txn *badger.Txn) error {
-					return txn.SetWithTTL([]byte("user."+strconv.Itoa(id)), byteUser, time.Hour*24*7)
+					return txn.SetWithTTL([]byte(keyUser+strconv.Itoa(id)), byteUser, time.Hour*24*7)
 				})
 			}
 		}

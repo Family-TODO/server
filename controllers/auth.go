@@ -14,6 +14,7 @@ func AuthRoute(router router.Party) {
 	authRoute := router.Party("/auth")
 
 	authRoute.Post("/", handleLogin)
+	authRoute.Post("/logout", handleLogout)
 	authRoute.Get("/tokens", handleTokens)
 	authRoute.Get("/me", handleMe)
 }
@@ -33,6 +34,8 @@ func handleLogin(ctx context.Context) {
 
 	user := models.GetUserByLogin(login)
 
+	// TODO Protect Brute-force
+
 	if user.ID <= 0 || !utils.CheckPasswordHash(password, user.Password) {
 		ctx.StatusCode(422)
 		ctx.JSON(iris.Map{"error": "Login or password is incorrect"})
@@ -46,6 +49,20 @@ func handleLogin(ctx context.Context) {
 	} else {
 		ctx.JSON(iris.Map{"error": "Error"})
 	}
+}
+
+func handleLogout(ctx context.Context) {
+	user := models.GetCurrentUser()
+	token := ctx.GetHeader("Auth")
+	err := user.RemoveToken(token)
+
+	if err != nil {
+		ctx.StatusCode(422)
+		ctx.JSON(iris.Map{"error": "Has error"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "Success"})
 }
 
 func handleTokens(ctx context.Context) {
