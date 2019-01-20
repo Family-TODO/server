@@ -4,6 +4,8 @@ import (
 	"../models"
 	"../utils"
 
+	"regexp"
+
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/core/router"
@@ -58,7 +60,7 @@ func handleLogout(ctx context.Context) {
 	err := user.RemoveToken(token)
 
 	if err != nil {
-		ctx.StatusCode(422)
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
 		ctx.JSON(iris.Map{"error": "Delete error"})
 		return
 	}
@@ -71,7 +73,7 @@ func handleLogoutAll(ctx context.Context) {
 	err := user.RemoveTokens()
 
 	if err != nil {
-		ctx.StatusCode(422)
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
 		ctx.JSON(iris.Map{"error": "Delete error"})
 		return
 	}
@@ -82,9 +84,15 @@ func handleLogoutAll(ctx context.Context) {
 func handleTokens(ctx context.Context) {
 	tokens, err := models.GetCurrentUser().GetTokens()
 
+	for i, val := range tokens {
+		match := regexp.MustCompile(`^(.+:\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
+		tokens[i].Token = match[1] + "..." + match[2]
+	}
+
 	if err == nil {
 		ctx.JSON(iris.Map{"result": "Tokens received", "tokens": tokens})
 	} else {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
 		ctx.JSON(iris.Map{"error": "Receive error"})
 	}
 }
