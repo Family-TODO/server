@@ -28,7 +28,7 @@ func GetAllGroups(groups *[]Group, userId uint, count, offset int) {
 			return db.
 				Select("DISTINCT tasks.*").
 				Group("tasks.group_id").
-				Order("tasks.updated_at desc").
+				Order("tasks.id desc").
 				Preload("User")
 		}).
 		Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").
@@ -37,4 +37,21 @@ func GetAllGroups(groups *[]Group, userId uint, count, offset int) {
 		Limit(count).
 		Offset(offset).
 		Find(&groups)
+}
+
+func GetGroup(group *Group, groupId uint, userId uint, limitTasks int) {
+	db := config.GetDb()
+
+	db.
+		Preload("Creator").
+		Preload("Users").
+		Preload("Tasks", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Preload("User").
+				Order("tasks.id desc").
+				Limit(limitTasks)
+		}).
+		Joins("LEFT JOIN group_user gu ON gu.group_id = groups.id").
+		Where("groups.creator_id = ? OR gu.user_id = ?", userId, userId).
+		First(&group, groupId)
 }

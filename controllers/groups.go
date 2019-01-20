@@ -4,6 +4,8 @@ import (
 	"../config"
 	"../models"
 
+	"strconv"
+
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/core/router"
@@ -14,6 +16,7 @@ func GroupsRoute(router router.Party) {
 	groupsRoute := router.Party("/groups")
 
 	groupsRoute.Get("/", handleGroupsGet)
+	groupsRoute.Get("/{id:int}", handleGroupGet)
 	groupsRoute.Post("/", handleGroupPost)
 	groupsRoute.Delete("/{id:int}", handleGroupDelete)
 }
@@ -35,6 +38,28 @@ func handleGroupsGet(ctx context.Context) {
 	models.GetAllGroups(&groups, userId, count, offset)
 
 	ctx.JSON(iris.Map{"result": "Groups received", "groups": groups})
+}
+
+func handleGroupGet(ctx context.Context) {
+	groupId, err := strconv.ParseUint(ctx.Params().Get("id"), 10, 64)
+	if err != nil || groupId < 1 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Invalid ID"})
+		return
+	}
+
+	var group models.Group
+	userId := models.GetCurrentUser().ID
+
+	models.GetGroup(&group, uint(groupId), userId, 40)
+
+	if group.ID < 1 {
+		ctx.StatusCode(iris.StatusNotFound)
+		ctx.JSON(iris.Map{"error": "Group is not found"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "Group received", "group": group})
 }
 
 func handleGroupPost(ctx context.Context) {
