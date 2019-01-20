@@ -121,7 +121,9 @@ func GetUsers() []User {
 	db := config.GetDb()
 
 	var users []User
-	db.Find(&users)
+	db.
+		Order("Name").
+		Find(&users)
 
 	return users
 }

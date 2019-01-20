@@ -42,10 +42,15 @@ func main() {
 	controllers.GroupsRoute(api)
 	controllers.UsersRoute(api)
 
-	if os.Getenv("APP_MODE") == "release" {
-		app.Run(iris.AutoTLS(":443", os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
+	// Run server
+	if os.Getenv("APP_MODE") == "release" || os.Getenv("TLS_ENABLE") == "1" || os.Getenv("TLS_ENABLE") == "true" {
+		if os.Getenv("TLS_AUTO") == "1" || os.Getenv("TLS_AUTO") == "true" {
+			app.Run(iris.AutoTLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
+		} else {
+			app.Run(iris.TLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY")))
+		}
 	} else {
-		app.Run(iris.Addr(":" + os.Getenv("PORT")))
+		app.Run(iris.Addr(os.Getenv("APP_ADDR")))
 	}
 }
 
