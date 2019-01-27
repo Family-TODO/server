@@ -117,6 +117,17 @@ func (user User) GetId() string {
 	return strconv.FormatUint(uint64(user.ID), 10)
 }
 
+func (user *User) Update(updateUser User) {
+	badgerDb := config.GetBadgerDb()
+	db := config.GetDb()
+
+	db.Model(&user).Updates(updateUser)
+
+	_ = badgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
+	})
+}
+
 func GetUsers() []User {
 	db := config.GetDb()
 
@@ -149,7 +160,7 @@ func ValidateUserToken(token string) bool {
 		tokenSplit := strings.Split(token, ":")
 		id, err := strconv.Atoi(tokenSplit[0])
 		if err == nil {
-			currentUser = GetUserById(id)
+			currentUser = GetUserById(uint(id))
 		}
 	}
 
@@ -157,7 +168,7 @@ func ValidateUserToken(token string) bool {
 }
 
 // ip - Remote Address
-func GetUserById(id int) User {
+func GetUserById(id uint) User {
 	var user User
 
 	badgerDb := config.GetBadgerDb()
@@ -165,7 +176,7 @@ func GetUserById(id int) User {
 
 	// Get user from badgerDB
 	err := badgerDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(keyUser + strconv.Itoa(id)))
+		item, err := txn.Get([]byte(keyUser + strconv.Itoa(int(id))))
 		if err != nil {
 			return err
 		}
@@ -187,7 +198,7 @@ func GetUserById(id int) User {
 			byteUser, err := json.Marshal(user)
 			if err == nil {
 				_ = badgerDb.Update(func(txn *badger.Txn) error {
-					return txn.SetWithTTL([]byte(keyUser+strconv.Itoa(id)), byteUser, time.Hour*24*7)
+					return txn.SetWithTTL([]byte(keyUser+strconv.Itoa(int(id))), byteUser, time.Hour*24*7)
 				})
 			}
 		}
