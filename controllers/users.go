@@ -17,6 +17,9 @@ func UsersRoute(router router.Party) {
 	usersRoute.Get("/", handleUsersGet)
 	usersRoute.Get("/{id:int}/tokens", handleTokens)
 	usersRoute.Put("/{id:int}", handleUsersPut)
+	usersRoute.Post("/", handleUserPost)
+	//TODO Change password
+	//TODO Delete
 }
 
 func handleUsersGet(ctx context.Context) {
@@ -62,4 +65,50 @@ func handleUsersPut(ctx context.Context) {
 
 	user.Update(data)
 	ctx.JSON(iris.Map{"reuslt": "Updated", "user": user})
+}
+
+func handleUserPost(ctx context.Context) {
+	currentUser := models.GetCurrentUser()
+
+	if !currentUser.IsAdmin {
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.JSON(iris.Map{"error": "User is not found"})
+		return
+	}
+
+	name, login, password := ctx.PostValue("name"), ctx.PostValue("login"), ctx.PostValue("password")
+	isAdmin, err := ctx.PostValueBool("is_admin")
+
+	if err != nil {
+		isAdmin = false
+	}
+
+	if login == "" || password == "" {
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.JSON(iris.Map{"error": "Login or password is empty"})
+		return
+	}
+
+	if len(password) < 6 {
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.JSON(iris.Map{"error": "Minimum password length 6"})
+		return
+	}
+
+	user := models.User{
+		Name:     name,
+		Login:    login,
+		IsAdmin:  isAdmin,
+		Password: password,
+	}
+
+	models.CreateUser(&user)
+
+	if user.ID < 1 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "User not created, login is probably busy"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "User created", "user": user})
 }

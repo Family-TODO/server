@@ -62,6 +62,7 @@ func (user User) RemoveToken(token string) error {
 
 func (user User) RemoveTokens() error {
 	badgerDb := config.GetBadgerDb()
+
 	return badgerDb.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -69,7 +70,6 @@ func (user User) RemoveTokens() error {
 		defer it.Close()
 
 		prefix := []byte(keyUserToken + user.GetId() + ":")
-		println("--->", prefix)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			key := it.Item().KeyCopy(nil)
 			err := txn.Delete(key)
@@ -218,4 +218,9 @@ func GetUserByLogin(login string) User {
 
 func GetCurrentUser() User {
 	return currentUser
+}
+
+func CreateUser(user *User) {
+	db := config.GetDb()
+	db.Create(&user)
 }
