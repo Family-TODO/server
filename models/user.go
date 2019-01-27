@@ -117,11 +117,11 @@ func (user User) GetId() string {
 	return strconv.FormatUint(uint64(user.ID), 10)
 }
 
-func (user *User) Update(updateUser User) {
+func (user *User) Update(data map[string]interface{}) {
 	badgerDb := config.GetBadgerDb()
 	db := config.GetDb()
 
-	db.Model(&user).Updates(updateUser)
+	db.Model(&user).Updates(data)
 
 	_ = badgerDb.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))

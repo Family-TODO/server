@@ -45,13 +45,20 @@ func handlePut(ctx context.Context) {
 	}
 
 	// No rights to edit if you are not admin or are not editing yourself
-	if !currentUser.IsAdmin || currentUser.ID != user.ID {
+	if !currentUser.IsAdmin && currentUser.ID != user.ID {
 		ctx.StatusCode(iris.StatusMethodNotAllowed)
-		ctx.JSON(iris.Map{"error": "User is not found"})
+		ctx.JSON(iris.Map{"error": "No permissions"})
 		return
 	}
 
-	name := ctx.URLParam("name")
-	user.Update(models.User{Name: name})
+	var data = make(map[string]interface{})
+	data["name"] = ctx.URLParam("name")
+
+	isAdmin, err := ctx.URLParamBool("is_admin")
+	if err == nil && currentUser.IsAdmin && currentUser.ID != user.ID {
+		data["is_admin"] = isAdmin
+	}
+
+	user.Update(data)
 	ctx.JSON(iris.Map{"reuslt": "Updated", "user": user})
 }
