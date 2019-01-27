@@ -14,17 +14,18 @@ func UsersRoute(router router.Party) {
 	// Router -> /api/users/*
 	usersRoute := router.Party("/users")
 
-	usersRoute.Get("/", handleGet)
-	usersRoute.Put("/{id:int}", handlePut)
+	usersRoute.Get("/", handleUsersGet)
+	usersRoute.Get("/{id:int}/tokens", handleTokens)
+	usersRoute.Put("/{id:int}", handleUsersPut)
 }
 
-func handleGet(ctx context.Context) {
+func handleUsersGet(ctx context.Context) {
 	users := models.GetUsers()
 
 	ctx.JSON(iris.Map{"result": "Users received", "users": users})
 }
 
-func handlePut(ctx context.Context) {
+func handleUsersPut(ctx context.Context) {
 	// Parse ID Param
 	userId, err := strconv.ParseUint(ctx.Params().Get("id"), 10, 64)
 	if err != nil || userId < 1 {

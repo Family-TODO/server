@@ -4,6 +4,7 @@ import (
 	"../models"
 	"../utils"
 
+	"strconv"
 	"regexp"
 
 	"github.com/kataras/iris"
@@ -82,15 +83,38 @@ func handleLogoutAll(ctx context.Context) {
 }
 
 func handleTokens(ctx context.Context) {
-	tokens, err := models.GetCurrentUser().GetTokens()
-
-	for i, val := range tokens {
-		match := regexp.MustCompile(`^(.+:\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
-		tokens[i].Token = match[1] + "..." + match[2]
-	}
+	userId, err := strconv.ParseUint(ctx.Params().Get("id"), 10, 64)
+	currentUser := models.GetCurrentUser()
+	var user models.User
 
 	if err == nil {
+		user = models.GetUserById(uint(userId))
+
+		if user.ID < 1 {
+			ctx.StatusCode(iris.StatusNotFound)
+			ctx.JSON(iris.Map{"error": "User is not found"})
+			return
+		}
+
+		if !currentUser.IsAdmin && currentUser.ID != user.ID {
+			ctx.StatusCode(iris.StatusMethodNotAllowed)
+			ctx.JSON(iris.Map{"error": "No permissions"})
+			return
+		}
+	} else {
+		user = currentUser
+	}
+
+	tokens, err := user.GetTokens()
+
+	if err == nil {
+		for i, val := range tokens {
+			match := regexp.MustCompile(`^(.+:\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
+			tokens[i].Token = match[1] + "..." + match[2]
+		}
+
 		ctx.JSON(iris.Map{"result": "Tokens received", "tokens": tokens})
+
 	} else {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)
 		ctx.JSON(iris.Map{"error": "Receive error"})
