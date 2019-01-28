@@ -128,6 +128,17 @@ func (user *User) Update(data map[string]interface{}) {
 	})
 }
 
+func (user *User) Delete() {
+	badgerDb := config.GetBadgerDb()
+	db := config.GetDb()
+
+	db.Delete(&user)
+
+	_ = badgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
+	})
+}
+
 func GetUsers() []User {
 	db := config.GetDb()
 

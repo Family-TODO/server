@@ -1,8 +1,11 @@
 # Server
 
 ## TODO
-- [ ] Add filter return object fields
 - [ ] Protect from brute force
+- [ ] Tests
+- [ ] Comments to code
+- [ ] DRY
+- [ ] Optimization
 
 ## Docs
 - Iris Framework - [Website](https://docs.iris-go.com), [Github](https://github.com/kataras/iris)

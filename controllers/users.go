@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"../models"
+	"../utils"
 
 	"strconv"
 
@@ -18,8 +19,8 @@ func UsersRoute(router router.Party) {
 	usersRoute.Get("/{id:int}/tokens", handleTokens)
 	usersRoute.Put("/{id:int}", handleUsersPut)
 	usersRoute.Post("/", handleUserPost)
+	usersRoute.Delete("/{id:int}", handleUserDelete)
 	//TODO Change password
-	//TODO Delete
 }
 
 func handleUsersGet(ctx context.Context) {
@@ -64,7 +65,7 @@ func handleUsersPut(ctx context.Context) {
 	}
 
 	user.Update(data)
-	ctx.JSON(iris.Map{"reuslt": "Updated", "user": user})
+	ctx.JSON(iris.Map{"result": "Updated", "user": user})
 }
 
 func handleUserPost(ctx context.Context) {
@@ -95,11 +96,18 @@ func handleUserPost(ctx context.Context) {
 		return
 	}
 
+	hashPassword, err := utils.HashPassword(password)
+	if err != nil {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Error during password encryption"})
+		return
+	}
+
 	user := models.User{
 		Name:     name,
 		Login:    login,
 		IsAdmin:  isAdmin,
-		Password: password,
+		Password: hashPassword,
 	}
 
 	models.CreateUser(&user)
@@ -111,4 +119,34 @@ func handleUserPost(ctx context.Context) {
 	}
 
 	ctx.JSON(iris.Map{"result": "User created", "user": user})
+}
+
+func handleUserDelete(ctx context.Context) {
+	userId, err := strconv.ParseUint(ctx.Params().Get("id"), 10, 64)
+	if err != nil || userId < 1 {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Invalid ID"})
+		return
+	}
+
+	// Get the current user and the user being edited
+	currentUser := models.GetCurrentUser()
+	user := models.GetUserById(uint(userId))
+
+	// No record
+	if user.ID < 1 {
+		ctx.StatusCode(iris.StatusNotFound)
+		ctx.JSON(iris.Map{"error": "User is not found"})
+		return
+	}
+
+	// No rights to edit if you are not admin or are not editing yourself
+	if !currentUser.IsAdmin || currentUser.ID == user.ID {
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.JSON(iris.Map{"error": "No permissions"})
+		return
+	}
+
+	user.Delete()
+	ctx.JSON(iris.Map{"result": "Removed"})
 }
