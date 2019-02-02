@@ -4,20 +4,23 @@ import (
 	"./config"
 	"./controllers"
 	"./models"
+	"./utils"
 
 	"os"
 
 	"github.com/kataras/iris"
 )
 
+// Git submodule, web
 const PathWeb = "./web/dist/"
 
+// Uses for protect rote
 var (
-	allowNotAuthRoutesName = [2]string{
+	allowNotAuthRoutesName = []string{
 		"GET/*file",
 		"POST/api/auth",
 	}
-	blockAuthRoutesName = [2]string{
+	blockAuthRoutesName = []string{
 		"POST/api/auth",
 	}
 )
@@ -43,8 +46,14 @@ func main() {
 	controllers.UsersRoute(api)
 
 	// Run server
-	if os.Getenv("APP_MODE") == "release" || os.Getenv("TLS_ENABLE") == "1" || os.Getenv("TLS_ENABLE") == "true" {
-		if os.Getenv("TLS_AUTO") == "1" || os.Getenv("TLS_AUTO") == "true" {
+	startServer(app)
+}
+
+// Run iris server
+// TLS server on release mode
+func startServer(app *iris.Application) {
+	if utils.EnvIsRelease() || utils.EnvIsTrue("TLS_ENABLE") {
+		if utils.EnvIsTrue("TLS_AUTO") {
 			app.Run(iris.AutoTLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
 		} else {
 			app.Run(iris.TLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY")))
@@ -58,6 +67,8 @@ func main() {
 func beforeRoute(ctx iris.Context) {
 	// Check header token
 	authTokenHeader := ctx.GetHeader("Auth")
+
+	// True - currentUser not empty
 	isAuth := models.ValidateUserToken(authTokenHeader)
 
 	currentRouteName := ctx.GetCurrentRoute().Name()
@@ -77,7 +88,7 @@ func beforeRoute(ctx iris.Context) {
 	ctx.Next()
 }
 
-func existRouteName(currentRouteName string, routesName [2]string) bool {
+func existRouteName(currentRouteName string, routesName []string) bool {
 	for _, routeName := range routesName {
 		if currentRouteName == routeName {
 			return true
