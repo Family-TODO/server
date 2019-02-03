@@ -18,9 +18,7 @@ type Group struct {
 }
 
 func GetAllGroups(groups *[]Group, userId uint, count, offset int) {
-	db := config.GetDb()
-
-	db.
+	config.Db.
 		Select("DISTINCT groups.*").
 		Preload("Creator").
 		Preload("Users").
@@ -40,9 +38,7 @@ func GetAllGroups(groups *[]Group, userId uint, count, offset int) {
 }
 
 func GetGroup(group *Group, groupId uint, userId uint, limitTasks int) {
-	db := config.GetDb()
-
-	db.
+	config.Db.
 		Preload("Creator").
 		Preload("Users").
 		Preload("Tasks", func(db *gorm.DB) *gorm.DB {

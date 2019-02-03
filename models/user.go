@@ -24,11 +24,13 @@ type User struct {
 	Tasks         []Task  `json:"tasks"`
 }
 
+// Badger DB
 type UserTokens struct {
 	Token string `json:"token"`
 	Ip    string `json:"ip"`
 }
 
+// Badger DB
 const (
 	keyUser      = "user."
 	keyUserToken = "user.token."
@@ -41,8 +43,7 @@ func (user User) AddToken(ip string) (string, error) {
 	rnd := utils.RandStringBytesMaskImpr(60)
 	token := user.GetId() + ":" + rnd
 
-	badgerDb := config.GetBadgerDb()
-	err := badgerDb.Update(func(txn *badger.Txn) error {
+	err := config.BadgerDb.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(keyUserToken+token), []byte(ip))
 	})
 
@@ -54,16 +55,13 @@ func (user User) AddToken(ip string) (string, error) {
 }
 
 func (user User) RemoveToken(token string) error {
-	badgerDb := config.GetBadgerDb()
-	return badgerDb.Update(func(txn *badger.Txn) error {
+	return config.BadgerDb.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(keyUserToken + token))
 	})
 }
 
 func (user User) RemoveTokens() error {
-	badgerDb := config.GetBadgerDb()
-
-	return badgerDb.Update(func(txn *badger.Txn) error {
+	return config.BadgerDb.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
@@ -86,8 +84,7 @@ func (user User) RemoveTokens() error {
 func (user User) GetTokens() ([]UserTokens, error) {
 	var tokens [] UserTokens
 
-	badgerDb := config.GetBadgerDb()
-	err := badgerDb.View(func(txn *badger.Txn) error {
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
@@ -118,32 +115,25 @@ func (user User) GetId() string {
 }
 
 func (user *User) Update(data map[string]interface{}) {
-	badgerDb := config.GetBadgerDb()
-	db := config.GetDb()
+	config.Db.Model(&user).Updates(data)
 
-	db.Model(&user).Updates(data)
-
-	_ = badgerDb.Update(func(txn *badger.Txn) error {
+	_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
 	})
 }
 
 func (user *User) Delete() {
-	badgerDb := config.GetBadgerDb()
-	db := config.GetDb()
+	config.Db.Delete(&user)
 
-	db.Delete(&user)
-
-	_ = badgerDb.Update(func(txn *badger.Txn) error {
+	_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
 	})
 }
 
 func GetUsers() []User {
-	db := config.GetDb()
-
 	var users []User
-	db.
+
+	config.Db.
 		Order("Name").
 		Find(&users)
 
@@ -153,7 +143,6 @@ func GetUsers() []User {
 // True - is validated
 // Set/Clear currentUser from parsed token
 func ValidateUserToken(token string) bool {
-	badgerDb := config.GetBadgerDb()
 	currentUser = User{}
 
 	if token == "" {
@@ -162,7 +151,7 @@ func ValidateUserToken(token string) bool {
 
 	// TODO Protect Brute-force
 
-	err := badgerDb.View(func(txn *badger.Txn) error {
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
 		_, keyIsExists := txn.Get([]byte(keyUserToken + token))
 		return keyIsExists
 	})
@@ -182,11 +171,8 @@ func ValidateUserToken(token string) bool {
 func GetUserById(id uint) User {
 	var user User
 
-	badgerDb := config.GetBadgerDb()
-	db := config.GetDb()
-
 	// Get user from badgerDB
-	err := badgerDb.View(func(txn *badger.Txn) error {
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(keyUser + strconv.Itoa(int(id))))
 		if err != nil {
 			return err
@@ -202,13 +188,13 @@ func GetUserById(id uint) User {
 
 	// Get user from DB and save to badgerDB
 	if err != nil {
-		db.First(&user, id)
+		config.Db.First(&user, id)
 
 		// Add/Update with TTL
 		if user.ID > 0 {
 			byteUser, err := json.Marshal(user)
 			if err == nil {
-				_ = badgerDb.Update(func(txn *badger.Txn) error {
+				_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
 					return txn.SetWithTTL([]byte(keyUser+strconv.Itoa(int(id))), byteUser, time.Hour*24*7)
 				})
 			}
@@ -221,8 +207,7 @@ func GetUserById(id uint) User {
 func GetUserByLogin(login string) User {
 	var user User
 
-	db := config.GetDb()
-	db.Where("login = ?", login).First(&user)
+	config.Db.Where("login = ?", login).First(&user)
 
 	return user
 }
@@ -232,6 +217,5 @@ func GetCurrentUser() User {
 }
 
 func CreateUser(user *User) {
-	db := config.GetDb()
-	db.Create(&user)
+	config.Db.Create(&user)
 }

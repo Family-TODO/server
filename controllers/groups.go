@@ -89,12 +89,11 @@ func handleGroupPost(ctx context.Context) {
 		CreatorID: models.GetCurrentUser().ID,
 	}
 
-	db := config.GetDb()
-	isBlank := db.NewRecord(group)
+	isBlank := config.Db.NewRecord(group)
 
 	if isBlank {
-		db.Create(&group)
-		db.Model(&group).Association("Users").Append(models.GetCurrentUser())
+		config.Db.Create(&group)
+		config.Db.Model(&group).Association("Users").Append(models.GetCurrentUser())
 		group.Creator = models.GetCurrentUser()
 		ctx.JSON(iris.Map{"result": "Group created", "group": group})
 	} else {
@@ -107,8 +106,7 @@ func handleGroupDelete(ctx context.Context) {
 	groupId := ctx.Params().Get("id")
 
 	var group models.Group
-	db := config.GetDb()
-	db.First(&group, groupId)
+	config.Db.First(&group, groupId)
 
 	if group.ID < 1 {
 		ctx.StatusCode(iris.StatusUnprocessableEntity)
@@ -124,6 +122,6 @@ func handleGroupDelete(ctx context.Context) {
 		return
 	}
 
-	db.Delete(&group)
+	config.Db.Delete(&group)
 	ctx.JSON(iris.Map{"result": "Group deleted"})
 }

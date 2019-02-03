@@ -14,7 +14,7 @@ import (
 // Git submodule, web
 const PathWeb = "./web/dist/"
 
-// Uses for protect rote
+// Uses for protect route
 var (
 	allowNotAuthRoutesName = []string{
 		"GET/*file",
@@ -26,9 +26,7 @@ var (
 )
 
 func main() {
-	db, badgerDb, app := config.Init()
-	defer db.Close()
-	defer badgerDb.Close()
+	app := config.NewConfig()
 
 	// SPA (git submodule, dist folder)
 	app.StaticWeb("/", PathWeb)
@@ -44,6 +42,10 @@ func main() {
 	controllers.AuthRoute(api)
 	controllers.GroupsRoute(api)
 	controllers.UsersRoute(api)
+
+	if utils.EnvIsRelease() {
+		_, _ = config.TlgBot.SendMessage("Server Running")
+	}
 
 	// Run server
 	startServer(app)
@@ -68,7 +70,7 @@ func beforeRoute(ctx iris.Context) {
 	// Check header token
 	authTokenHeader := ctx.GetHeader("Auth")
 
-	// True - currentUser not empty
+	// If True - models.currentUser is not empty
 	isAuth := models.ValidateUserToken(authTokenHeader)
 
 	currentRouteName := ctx.GetCurrentRoute().Name()

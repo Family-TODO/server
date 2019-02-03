@@ -1,7 +1,11 @@
 package config
 
 import (
+	"../telegram"
+	"../utils"
+
 	"os"
+	"strconv"
 
 	"github.com/dgraph-io/badger"
 	"github.com/jinzhu/gorm"
@@ -13,42 +17,90 @@ import (
 )
 
 var (
-	db       *gorm.DB
-	badgerDb *badger.DB
+	BadgerDb *badger.DB
+	TlgBot   *telegram.TlgBot
+	Db       *gorm.DB
 )
 
-func Init() (*gorm.DB, *badger.DB, *iris.Application) {
-	/* - Import Environment - */
+func NewConfig() *iris.Application {
+	/* - Init Environment .env - */
+	initEnvironment()
+
+	/* - TelegramBot for notification - */
+	TlgBot = initTelegram()
+
+	/* - Connect to sqlite3 Database - */
+	Db = initDatabase()
+
+	/* - Connect to Badger Database - */
+	BadgerDb = initBadgerDatabase()
+
+	/* - Init Iris Server - */
+	app := initIrisServer()
+
+	/* - Close everything on close server - */
+	iris.RegisterOnInterrupt(func() {
+		Db.Close()
+		BadgerDb.Close()
+
+		if utils.EnvIsRelease() {
+			_, _ = TlgBot.SendMessage("Server Stopped")
+		}
+	})
+
+	return app
+}
+
+// Import config from .env file
+func initEnvironment() {
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
+}
 
-	/* - Connect to Database - */
-	db, err = gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
-	if os.Getenv("APP_MODE") == "debug" {
+// Get config from .env file and
+// set init
+func initTelegram() *telegram.TlgBot {
+	u, err := strconv.ParseUint(os.Getenv("TLG_USER_ID"), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+
+	return telegram.NewTelegram(os.Getenv("TLG_TOKEN"), u)
+}
+
+// Connect to sqlite3 Database
+// In debug mode - enable log mode
+func initDatabase() *gorm.DB {
+	db, err := gorm.Open("sqlite3", os.Getenv("DATABASE_PATH"))
+	if err != nil {
+		panic(err)
+	}
+
+	if !utils.EnvIsRelease() {
 		db.LogMode(true)
 	}
 
-	if err != nil {
-		panic(err)
-	}
+	return db
+}
 
-	/* - Key-value Database - */
+// Connect to Key-Value Database - badgerDB
+func initBadgerDatabase() *badger.DB {
 	opts := badger.DefaultOptions
 	opts.Dir = os.Getenv("BADGER_PATH")
 	opts.ValueDir = os.Getenv("BADGER_PATH")
-	badgerDb, err = badger.Open(opts)
+
+	badgerDb, err := badger.Open(opts)
 	if err != nil {
 		panic(err)
 	}
 
-	// Close and unlock the database when control+C/cmd+C pressed
-	iris.RegisterOnInterrupt(func() {
-		db.Close()
-	})
+	return badgerDb
+}
 
-	/* - Initialization Iris - */
+// Create iris Application instance.
+func initIrisServer() *iris.Application {
 	app := iris.New()
 	app.Logger().SetLevel(os.Getenv("LOGGER"))
 
@@ -58,13 +110,5 @@ func Init() (*gorm.DB, *badger.DB, *iris.Application) {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	return db, badgerDb, app
-}
-
-func GetDb() *gorm.DB {
-	return db
-}
-
-func GetBadgerDb() *badger.DB {
-	return badgerDb
+	return app
 }
