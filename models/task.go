@@ -2,15 +2,15 @@ package models
 
 import (
 	"time"
-
-	"github.com/jinzhu/gorm"
 )
 
 type Task struct {
-	gorm.Model
-	UserId  uint   `gorm:"index; not null"`
-	GroupId uint   `gorm:"index"`
-	Name    string `gorm:"not null"`
-	IsDone  bool   `gorm:"default:false; not null"`
-	Time    *time.Time
+	Model
+	UserID   uint       `gorm:"index; not null" json:"user_id"`
+	GroupID  uint       `gorm:"index; not null" json:"group_id"`
+	Name     string     `gorm:"not null" json:"name"`
+	DoneTime *time.Time `json:"done_time"`
+
+	User  User  `json:"user"`
+	Group Group `json:"group"`
 }

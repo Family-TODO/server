@@ -10,38 +10,41 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/jinzhu/gorm"
 )
 
 type User struct {
-	gorm.Model
-	Name       string
-	Login      string `gorm:"unique_index; not null"`
-	Password   string `gorm:"not null"`
-	IsAdmin    bool   `gorm:"default:false; not null"`
-	IsDisabled bool   `gorm:"default:false; not null"`
+	Model
+	Name     string `json:"name"`
+	Login    string `gorm:"unique_index; not null" json:"login"`
+	Password string `gorm:"not null" json:"-"`
+	IsAdmin  bool   `gorm:"default:false; not null" json:"is_admin"`
 
-	Groups        []Group `gorm:"many2many:user_group"`
-	CreatorGroups []Group `gorm:"foreignkey:CreatorId"`
-	Tasks         []Task
-	Tag           Tag `gorm:"polymorphic:Owner"`
+	CreatorGroups []Group `gorm:"foreignkey:CreatorID" json:"-"`
+	Groups        []Group `gorm:"many2many:group_user" json:"groups"`
+	Tasks         []Task  `json:"tasks"`
 }
 
+// Badger DB
 type UserTokens struct {
 	Token string `json:"token"`
 	Ip    string `json:"ip"`
 }
+
+// Badger DB
+const (
+	keyUser      = "user."
+	keyUserToken = "user.token."
+)
 
 var currentUser User
 
 // Return token
 func (user User) AddToken(ip string) (string, error) {
 	rnd := utils.RandStringBytesMaskImpr(60)
-	token := strconv.FormatUint(uint64(user.ID), 10) + ":" + rnd
+	token := user.GetId() + ":" + rnd
 
-	badgerDb := config.GetBadgerDb()
-	err := badgerDb.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("user.token."+token), []byte(ip))
+	err := config.BadgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(keyUserToken+token), []byte(ip))
 	})
 
 	if err != nil {
@@ -51,17 +54,43 @@ func (user User) AddToken(ip string) (string, error) {
 	return token, nil
 }
 
-func (user User) GetTokens() ([]UserTokens, error) {
-	var tokens [] UserTokens
+func (user User) RemoveToken(token string) error {
+	return config.BadgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUserToken + token))
+	})
+}
 
-	badgerDb := config.GetBadgerDb()
-	err := badgerDb.View(func(txn *badger.Txn) error {
+func (user User) RemoveTokens() error {
+	return config.BadgerDb.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		prefix := []byte("user.token." + strconv.FormatUint(uint64(user.ID), 10) + ":")
+		prefix := []byte(keyUserToken + user.GetId() + ":")
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			key := it.Item().KeyCopy(nil)
+			err := txn.Delete(key)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (user User) GetTokens() ([]UserTokens, error) {
+	var tokens [] UserTokens
+
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		prefix := []byte(keyUserToken + user.GetId() + ":")
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -81,18 +110,49 @@ func (user User) GetTokens() ([]UserTokens, error) {
 	return tokens, nil
 }
 
+func (user User) GetId() string {
+	return strconv.FormatUint(uint64(user.ID), 10)
+}
+
+func (user *User) Update(data map[string]interface{}) {
+	config.Db.Model(&user).Updates(data)
+
+	_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
+	})
+}
+
+func (user *User) Delete() {
+	config.Db.Delete(&user)
+
+	_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(keyUser + strconv.Itoa(int(user.ID))))
+	})
+}
+
+func GetUsers() []User {
+	var users []User
+
+	config.Db.
+		Order("Name").
+		Find(&users)
+
+	return users
+}
+
 // True - is validated
 // Set/Clear currentUser from parsed token
 func ValidateUserToken(token string) bool {
-	badgerDb := config.GetBadgerDb()
 	currentUser = User{}
 
 	if token == "" {
 		return false
 	}
 
-	err := badgerDb.View(func(txn *badger.Txn) error {
-		_, keyIsExists := txn.Get([]byte("user.token." + token))
+	// TODO Protect Brute-force
+
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
+		_, keyIsExists := txn.Get([]byte(keyUserToken + token))
 		return keyIsExists
 	})
 
@@ -100,7 +160,7 @@ func ValidateUserToken(token string) bool {
 		tokenSplit := strings.Split(token, ":")
 		id, err := strconv.Atoi(tokenSplit[0])
 		if err == nil {
-			currentUser = GetUserById(id)
+			currentUser = GetUserById(uint(id))
 		}
 	}
 
@@ -108,15 +168,12 @@ func ValidateUserToken(token string) bool {
 }
 
 // ip - Remote Address
-func GetUserById(id int) User {
+func GetUserById(id uint) User {
 	var user User
 
-	badgerDb := config.GetBadgerDb()
-	db := config.GetDb()
-
 	// Get user from badgerDB
-	err := badgerDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("user." + strconv.Itoa(id)))
+	err := config.BadgerDb.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(keyUser + strconv.Itoa(int(id))))
 		if err != nil {
 			return err
 		}
@@ -129,18 +186,18 @@ func GetUserById(id int) User {
 		return json.Unmarshal(val, &user)
 	})
 
-	// Get user from DB
+	// Get user from DB and save to badgerDB
 	if err != nil {
-		db.First(&user, id)
-	}
+		config.Db.First(&user, id)
 
-	// Add/Update with TTL
-	if user.ID > 0 {
-		byteUser, err := json.Marshal(user)
-		if err == nil {
-			_ = badgerDb.Update(func(txn *badger.Txn) error {
-				return txn.SetWithTTL([]byte("user."+strconv.Itoa(id)), byteUser, time.Hour*24*7)
-			})
+		// Add/Update with TTL
+		if user.ID > 0 {
+			byteUser, err := json.Marshal(user)
+			if err == nil {
+				_ = config.BadgerDb.Update(func(txn *badger.Txn) error {
+					return txn.SetWithTTL([]byte(keyUser+strconv.Itoa(int(id))), byteUser, time.Hour*24*7)
+				})
+			}
 		}
 	}
 
@@ -150,12 +207,15 @@ func GetUserById(id int) User {
 func GetUserByLogin(login string) User {
 	var user User
 
-	db := config.GetDb()
-	db.Where("login = ?", login).First(&user)
+	config.Db.Where("login = ?", login).First(&user)
 
 	return user
 }
 
 func GetCurrentUser() User {
 	return currentUser
+}
+
+func CreateUser(user *User) {
+	config.Db.Create(&user)
 }

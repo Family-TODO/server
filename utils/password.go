@@ -2,11 +2,11 @@ package utils
 
 import "golang.org/x/crypto/bcrypt"
 
-const HashCost = 14
+const hashCost = 14
 
 // Password Hashing
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), HashCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), hashCost)
 	return string(bytes), err
 }
 

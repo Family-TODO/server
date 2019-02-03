@@ -4,28 +4,29 @@ import (
 	"./config"
 	"./controllers"
 	"./models"
+	"./utils"
 
 	"os"
 
 	"github.com/kataras/iris"
 )
 
+// Git submodule, web
 const PathWeb = "./web/dist/"
 
+// Uses for protect route
 var (
-	allowNotAuthRoutesName = [2]string{
+	allowNotAuthRoutesName = []string{
 		"GET/*file",
 		"POST/api/auth",
 	}
-	blockAuthRoutesName = [2]string{
+	blockAuthRoutesName = []string{
 		"POST/api/auth",
 	}
 )
 
 func main() {
-	db, badgerDb, app := config.Init()
-	defer db.Close()
-	defer badgerDb.Close()
+	app := config.NewConfig()
 
 	// SPA (git submodule, dist folder)
 	app.StaticWeb("/", PathWeb)
@@ -37,13 +38,30 @@ func main() {
 	// Route -> /api/*
 	api := app.Party("/api")
 
-	// Auth
+	// Routes
 	controllers.AuthRoute(api)
+	controllers.GroupsRoute(api)
+	controllers.UsersRoute(api)
 
-	if os.Getenv("APP_MODE") == "release" {
-		app.Run(iris.AutoTLS(":443", os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
+	if utils.EnvIsRelease() {
+		_, _ = config.TlgBot.SendMessage("Server Running")
+	}
+
+	// Run server
+	startServer(app)
+}
+
+// Run iris server
+// TLS server on release mode
+func startServer(app *iris.Application) {
+	if utils.EnvIsRelease() || utils.EnvIsTrue("TLS_ENABLE") {
+		if utils.EnvIsTrue("TLS_AUTO") {
+			app.Run(iris.AutoTLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_DOMAIN"), os.Getenv("TLS_EMAIL")))
+		} else {
+			app.Run(iris.TLS(os.Getenv("TLS_ADDR"), os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY")))
+		}
 	} else {
-		app.Run(iris.Addr(os.Getenv(":" + "PORT")))
+		app.Run(iris.Addr(os.Getenv("APP_ADDR")))
 	}
 }
 
@@ -51,18 +69,20 @@ func main() {
 func beforeRoute(ctx iris.Context) {
 	// Check header token
 	authTokenHeader := ctx.GetHeader("Auth")
+
+	// If True - models.currentUser is not empty
 	isAuth := models.ValidateUserToken(authTokenHeader)
 
 	currentRouteName := ctx.GetCurrentRoute().Name()
 
 	if isAuth && existRouteName(currentRouteName, blockAuthRoutesName) {
-		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.StatusCode(iris.StatusMethodNotAllowed)
 		ctx.JSON(map[string]string{"error": "Access denied for authorized users"})
 		return
 	}
 
 	if !isAuth && !existRouteName(currentRouteName, allowNotAuthRoutesName) {
-		ctx.StatusCode(iris.StatusMethodNotAllowed)
+		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.JSON(map[string]string{"error": "Auth is required"})
 		return
 	}
@@ -70,7 +90,7 @@ func beforeRoute(ctx iris.Context) {
 	ctx.Next()
 }
 
-func existRouteName(currentRouteName string, routesName [2]string) bool {
+func existRouteName(currentRouteName string, routesName []string) bool {
 	for _, routeName := range routesName {
 		if currentRouteName == routeName {
 			return true

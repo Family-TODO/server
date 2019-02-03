@@ -4,14 +4,27 @@ import (
 	"../models"
 	"../utils"
 
+	"strconv"
+	"regexp"
+
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/core/router"
 )
 
 func AuthRoute(router router.Party) {
-	router.Get("/auth/tokens", handleTokens)
-	router.Post("/auth", handleLogin)
+	// Route -> /api/groups/*
+	authRoute := router.Party("/auth")
+
+	authRoute.Post("/", handleLogin)
+	authRoute.Post("/logout", handleLogout)
+	authRoute.Post("/logout/all", handleLogoutAll)
+	authRoute.Get("/tokens", handleTokens)
+	authRoute.Get("/me", handleMe)
+}
+
+func handleMe(ctx context.Context) {
+	ctx.JSON(iris.Map{"result": "Profile received", "user": models.GetCurrentUser()})
 }
 
 func handleLogin(ctx context.Context) {
@@ -25,6 +38,8 @@ func handleLogin(ctx context.Context) {
 
 	user := models.GetUserByLogin(login)
 
+	// TODO Protect Brute-force
+
 	if user.ID <= 0 || !utils.CheckPasswordHash(password, user.Password) {
 		ctx.StatusCode(422)
 		ctx.JSON(iris.Map{"error": "Login or password is incorrect"})
@@ -34,18 +49,74 @@ func handleLogin(ctx context.Context) {
 	token, err := user.AddToken(ctx.RemoteAddr())
 
 	if err == nil {
-		ctx.JSON(iris.Map{"result": "Success", "token": token})
+		ctx.JSON(iris.Map{"result": "You are logged in", "token": token})
 	} else {
-		ctx.JSON(iris.Map{"error": "Error"})
+		ctx.JSON(iris.Map{"error": "Authorisation Error"})
 	}
 }
 
+func handleLogout(ctx context.Context) {
+	user := models.GetCurrentUser()
+	token := ctx.GetHeader("Auth")
+	err := user.RemoveToken(token)
+
+	if err != nil {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Delete error"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "You are logged out"})
+}
+
+func handleLogoutAll(ctx context.Context) {
+	user := models.GetCurrentUser()
+	err := user.RemoveTokens()
+
+	if err != nil {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Delete error"})
+		return
+	}
+
+	ctx.JSON(iris.Map{"result": "Tokens removed"})
+}
+
 func handleTokens(ctx context.Context) {
-	tokens, err := models.GetCurrentUser().GetTokens()
+	userId, err := strconv.ParseUint(ctx.Params().Get("id"), 10, 64)
+	currentUser := models.GetCurrentUser()
+	var user models.User
 
 	if err == nil {
-		ctx.JSON(iris.Map{"result": "Success", "tokens": tokens})
+		user = models.GetUserById(uint(userId))
+
+		if user.ID < 1 {
+			ctx.StatusCode(iris.StatusNotFound)
+			ctx.JSON(iris.Map{"error": "User is not found"})
+			return
+		}
+
+		if !currentUser.IsAdmin && currentUser.ID != user.ID {
+			ctx.StatusCode(iris.StatusMethodNotAllowed)
+			ctx.JSON(iris.Map{"error": "No permissions"})
+			return
+		}
 	} else {
-		ctx.JSON(iris.Map{"error": "Error"})
+		user = currentUser
+	}
+
+	tokens, err := user.GetTokens()
+
+	if err == nil {
+		for i, val := range tokens {
+			match := regexp.MustCompile(`^(.+:\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
+			tokens[i].Token = match[1] + "..." + match[2]
+		}
+
+		ctx.JSON(iris.Map{"result": "Tokens received", "tokens": tokens})
+
+	} else {
+		ctx.StatusCode(iris.StatusUnprocessableEntity)
+		ctx.JSON(iris.Map{"error": "Receive error"})
 	}
 }

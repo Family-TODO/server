@@ -1,7 +1,13 @@
-# server
+# Server
+
+## TODO
+- [ ] Protect from brute force
+- [ ] Tests
+- [ ] Comments to code
+- [ ] DRY
+- [ ] Optimization
 
 ## Docs
-
 - Iris Framework - [Website](https://docs.iris-go.com), [Github](https://github.com/kataras/iris)
 - Gorm ORM - [Website](http://doc.gorm.io), [Github](https://github.com/jinzhu/gorm)
 
