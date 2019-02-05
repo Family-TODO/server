@@ -109,8 +109,15 @@ func handleTokens(ctx context.Context) {
 
 	if err == nil {
 		for i, val := range tokens {
-			match := regexp.MustCompile(`^(.+:\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
-			tokens[i].Token = match[1] + "..." + match[2]
+			// (efwf3)|(t231r)
+			matchToken := regexp.MustCompile(`^.+:(\w{5}).+(\w{5})$`).FindStringSubmatch(val.Token)
+			tokens[i].Token = matchToken[1] + "..." + matchToken[2]
+
+			// (127)|(1)
+			matchIp := regexp.MustCompile(`^(\w+)\..+\.(\w+)`).FindStringSubmatch(val.Ip)
+			if len(matchIp) > 2 {
+				tokens[i].Ip = matchIp[1] + "..." + matchIp[2]
+			}
 		}
 
 		ctx.JSON(iris.Map{"result": "Tokens received", "tokens": tokens})
